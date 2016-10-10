@@ -7,6 +7,9 @@
  */
 package org.eclipse.smarthome.binding.hue;
 
+import java.util.Collections;
+import java.util.Set;
+
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 
 /**
@@ -50,5 +53,8 @@ public class HueBindingConstants {
 
     // Light config properties
     public static final String LIGHT_ID = "lightId";
+
+    // Added for the N-UPNP discovery
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UID = Collections.singleton(THING_TYPE_BRIDGE);
 
 }
