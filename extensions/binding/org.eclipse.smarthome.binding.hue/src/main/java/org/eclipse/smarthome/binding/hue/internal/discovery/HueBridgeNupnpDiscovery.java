@@ -3,23 +3,23 @@ package org.eclipse.smarthome.binding.hue.internal.discovery;
 import static org.eclipse.smarthome.binding.hue.HueBindingConstants.*;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
 import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
 import org.eclipse.smarthome.core.thing.ThingUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 public class HueBridgeNupnpDiscovery extends AbstractDiscoveryService {
 
-    private Logger logger = LoggerFactory.getLogger(HueBridgeNupnpDiscovery.class);
+    // private Logger logger = LoggerFactory.getLogger(HueBridgeNupnpDiscovery.class);
 
     private String host = " ";
 
@@ -32,10 +32,6 @@ public class HueBridgeNupnpDiscovery extends AbstractDiscoveryService {
     @Override
     protected void startScan() {
 
-        logger.debug("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
-        logger.debug("Inside startScan method of HueBridgeNupnpDiscovery...");
-        logger.debug("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
-
         discoveryHue();
     }
 
@@ -44,15 +40,13 @@ public class HueBridgeNupnpDiscovery extends AbstractDiscoveryService {
         // get ThingUID
         ThingUID uid = getThingUID();
 
-        logger.debug("+++++++++++++++++++++");
-        logger.debug("The uid is: " + uid);
-        logger.debug("+++++++++++++++++++++");
-
         if (uid != null) {
             Map<String, Object> properties = new HashMap<>(2);
             properties.put(HOST, host);
             properties.put(SERIAL_NUMBER, serialNumber);
 
+            // TODO: Label of the Philips hue is hard coded, it is possible to read it from web page -
+            // bridgeIp/description.xml
             DiscoveryResult result = DiscoveryResultBuilder.create(uid).withProperties(properties)
                     .withLabel("Philips hue").withRepresentationProperty(SERIAL_NUMBER).build();
             thingDiscovered(result);
@@ -63,23 +57,48 @@ public class HueBridgeNupnpDiscovery extends AbstractDiscoveryService {
     }
 
     private ThingUID getThingUID() {
+
+        Gson gson = new Gson();
         try {
-            URL url = new URL("https://www.meethue.com/api/nupnp");
-            BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream()));
-            String strTemp = " ";
-            while ((strTemp = br.readLine()) != null) {
-                String[] parts = strTemp.split(",");
-                serialNumber = parts[0].substring(parts[0].indexOf(':') + 2, parts[0].lastIndexOf('"'));
-                host = parts[1].substring(parts[1].indexOf(':') + 2, parts[1].lastIndexOf('"')).trim();
+            String json = readUrl("https://www.meethue.com/api/nupnp");
+
+            List<JsonParameters> list = gson.fromJson(json, new TypeToken<List<JsonParameters>>() {
+            }.getType());
+
+            // TODO: in case of more than one bridge, code should be modified
+            // in case of one bridge
+            JsonParameters jsonParameters = list.get(0);
+
+            serialNumber = jsonParameters.getId();
+            host = jsonParameters.getInternalipaddress();
+
+            if (serialNumber != null) {
+                return new ThingUID(THING_TYPE_BRIDGE, serialNumber);
             }
-        } catch (MalformedURLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        if (serialNumber != null) {
-            return new ThingUID(THING_TYPE_BRIDGE, serialNumber);
         }
         return null;
+    }
+
+    private static String readUrl(String urlString) throws Exception {
+        BufferedReader reader = null;
+        try {
+            URL url = new URL(urlString);
+            reader = new BufferedReader(new InputStreamReader(url.openStream()));
+            StringBuffer buffer = new StringBuffer();
+            int read;
+            char[] chars = new char[1024];
+            while ((read = reader.read(chars)) != -1) {
+                buffer.append(chars, 0, read);
+            }
+
+            return buffer.toString();
+        } finally {
+            if (reader != null) {
+                reader.close();
+            }
+        }
+
     }
 }
