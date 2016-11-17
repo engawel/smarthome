@@ -29,12 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 
 /**
- * The {@link HueBridgeNupnpDiscovery} is responsible for discovering new hue
- * bridges. It uses the 'NUPnP service provided by Philips'.
+ * The {@link HueBridgeNupnpDiscovery} is responsible for discovering new
+ * hue bridges. It uses the 'NUPnP service provided by Philips'.
  *
  * @author Awelkiyar Wehabrebi - Initial contribution
  * @author Christoph Knauf - Refactorings
@@ -127,8 +126,7 @@ public class HueBridgeNupnpDiscovery extends AbstractDiscoveryService {
      * Checks if the Bridge is a reachable Hue Bridge with a valid id.
      *
      * @param bridge the {@link BridgeJsonParameters}s
-     * @return true if Bridge is a reachable Hue Bridge with a id containing
-     *         BRIDGE_INDICATOR longer then 10
+     * @return true if Bridge is a reachable Hue Bridge with a id containing BRIDGE_INDICATOR longer then 10
      */
     private boolean isReachableAndValidHueBridge(BridgeJsonParameters bridge) {
         String host = bridge.getInternalIpAddress();
@@ -147,19 +145,17 @@ public class HueBridgeNupnpDiscovery extends AbstractDiscoveryService {
             return false;
         }
         if (!id.substring(6, 10).equals(BRIDGE_INDICATOR)) {
-            logger.debug(
-                    "Bridge not discovered: id {} does not contain bridge indicator {} or its at the wrong position.",
-                    id, BRIDGE_INDICATOR);
+            logger.debug("Bridge not discovered: id {} does not contain bridge indicator {}.", id, BRIDGE_INDICATOR);
             return false;
         }
         try {
-            description = doGetRequest(DESC_URL_PATTERN.replace("HOST", host));
+            description = HttpUtil.executeUrl("GET", DESC_URL_PATTERN.replace("HOST", host), REQUEST_TIMEOUT);
         } catch (IOException e) {
-            logger.debug("Bridge not discovered: Failure accessing description file for ip: {}", host);
+            logger.debug("Bridge not discovered: Failure accessing description file for ip: {}.", host);
             return false;
         }
         if (!description.contains(MODEL_NAME_PHILIPS_HUE)) {
-            logger.debug("Bridge not discovered: Description does not containing the model name: {}", description);
+            logger.debug("Bridge not discovered: Description does not containing the model name: {}.", description);
             return false;
         }
         return true;
@@ -173,26 +169,13 @@ public class HueBridgeNupnpDiscovery extends AbstractDiscoveryService {
     private List<BridgeJsonParameters> getBridgeList() {
         try {
             Gson gson = new Gson();
-            String json = doGetRequest(DISCOVERY_URL);
+            String json = HttpUtil.executeUrl("GET", DISCOVERY_URL, REQUEST_TIMEOUT);
             return gson.fromJson(json, new TypeToken<List<BridgeJsonParameters>>() {
             }.getType());
         } catch (IOException e) {
-            logger.debug("Philips Hue NUPnP service not reachable. Can't discover bridges");
-        } catch (JsonParseException je) {
-            logger.debug("Invalid json respone from Hue NUPnP service. Can't discover bridges");
+            logger.debug("Philips Hue NUPnP service not reachable. Can't discover bridges", e);
         }
         return new ArrayList<BridgeJsonParameters>();
-    }
-
-    /**
-     * Introduced in order to enable testing.
-     * 
-     * @param url the url
-     * @return the http request result as String
-     * @throws IOException if request failed
-     */
-    protected String doGetRequest(String url) throws IOException {
-        return HttpUtil.executeUrl("GET", url, REQUEST_TIMEOUT);
     }
 
 }
