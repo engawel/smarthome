@@ -181,7 +181,7 @@ class HueBridgeNupnpDiscoveryOSGITest extends OSGiTest{
     }
 
     @Test
-    public void 'assert that invalid birdges are not discovered'(){
+    public void 'assert that invalid bridges are not discovered'(){
         sut = new ConfigurableBridgeNupnpDiscoveryMock()
         registerService(sut, DiscoveryService.class.name)
         def results = [:]
